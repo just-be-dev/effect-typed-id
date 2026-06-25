@@ -7,7 +7,7 @@
   "lsp": {
     "vtsls": {
       "binary": {
-        "path": "${ZED_WORKTREE_ROOT}/node_modules/.bin/tsgo",
+        "path": "node_modules/.bin/tsgo",
         "arguments": ["--lsp", "--stdio"]
       }
     }
