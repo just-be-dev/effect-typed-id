@@ -11,6 +11,7 @@
     "@effect/tsgo": "^0.14.6",
     "@types/bun": "latest",
     "@typescript/native-preview": "7.0.0-dev.20260624.1",
+    "effect-solutions": "^0.5.3",
     "typescript": "7.0.1-rc"
   },
   "dependencies": {
