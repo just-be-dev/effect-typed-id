@@ -2,10 +2,18 @@
   "name": "effect-id",
   "module": "index.ts",
   "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "prepare": "effect-tsgo patch"
   },
-  "peerDependencies": {
-    "typescript": "^5"
+  "devDependencies": {
+    "@effect/language-service": "^0.86.2",
+    "@effect/tsgo": "^0.14.6",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "7.0.0-dev.20260624.1",
+    "typescript": "7.0.1-rc"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.90"
   }
 }

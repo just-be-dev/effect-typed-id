@@ -1,0 +1,15 @@
+{
+  "languages": {
+    "TypeScript": { "language_servers": ["vtsls", "!typescript-language-server"] },
+    "TSX":        { "language_servers": ["vtsls", "!typescript-language-server"] },
+    "JavaScript": { "language_servers": ["vtsls", "!typescript-language-server"] }
+  },
+  "lsp": {
+    "vtsls": {
+      "binary": {
+        "path": "${ZED_WORKTREE_ROOT}/node_modules/.bin/tsgo",
+        "arguments": ["--lsp", "--stdio"]
+      }
+    }
+  }
+}
