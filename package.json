@@ -1,8 +1,17 @@
 {
   "name": "effect-id",
+  "version": "0.1.0",
   "module": "index.ts",
   "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "index.ts",
+    "README.md"
+  ],
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsgo --noEmit",
     "prepare": "effect-tsgo patch"
   },
