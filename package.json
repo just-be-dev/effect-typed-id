@@ -1,5 +1,5 @@
 {
-  "name": "effect-typed-id",
+  "name": "@just-be/effect-typed-id",
   "version": "0.1.0",
   "description": "Effect TypeScript implementation of the TypeID spec",
   "type": "module",
