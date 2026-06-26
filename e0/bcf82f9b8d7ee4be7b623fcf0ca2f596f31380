@@ -1,0 +1,21 @@
+mise.toml
+  s_bbc88ae7bace21::t_ac98679f58318f 13-58
+tsconfig.json
+  s_bbc88ae7bace21::t_ac98679f58318f 16-20,37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "e0bcf82f9b8d7ee4be7b623fcf0ca2f596f31380",
+  "prompts": {},
+  "sessions": {
+    "s_bbc88ae7bace21": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0fe6a9169ffe0Q9ZLFYoMPcEcG",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
