@@ -55,4 +55,4 @@ bun -e "
 
 [tasks.publish]
 description = "Publish the package to npm"
-run = "bun publish --access public"
+run = "npm publish --provenance --access public"
