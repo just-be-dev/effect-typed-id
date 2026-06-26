@@ -1,4 +1,4 @@
-import { Brand, Crypto, Effect, PlatformError, Schema } from "effect"
+import { Brand, Crypto, Effect, Layer, PlatformError, Schema } from "effect"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -212,6 +212,51 @@ export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) 
   const suffix = encodeBytes(uuidToBytes(uuid))
   return format(validPrefix, suffix)
 })
+
+const webCryptoDigest = (
+  algorithm: Crypto.DigestAlgorithm,
+  data: Uint8Array,
+): Effect.Effect<Uint8Array, PlatformError.PlatformError> =>
+  Effect.tryPromise({
+    try: () =>
+      globalThis.crypto.subtle
+        .digest(algorithm, data as BufferSource)
+        .then((buffer) => new Uint8Array(buffer)),
+    catch: (cause) =>
+      PlatformError.systemError({
+        _tag: "Unknown",
+        module: "Crypto",
+        method: "digest",
+        description: "Could not compute digest",
+        cause,
+      }),
+  })
+
+/**
+ * A `Crypto.Crypto` layer backed by the standard Web Crypto API
+ * (`globalThis.crypto`).
+ *
+ * Provide this to satisfy the `Crypto.Crypto` requirement of `generate` (and
+ * factory `generate`) on any runtime that exposes Web Crypto, including Bun,
+ * Node.js 20+, Deno, browsers, and Cloudflare Workers:
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { generate, WebCrypto } from "@just-be/effect-typed-id"
+ *
+ * const id = await Effect.runPromise(
+ *   generate("user").pipe(Effect.provide(WebCrypto)),
+ * )
+ * ```
+ */
+export const WebCrypto: Layer.Layer<Crypto.Crypto> = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    randomBytes: (size) =>
+      globalThis.crypto.getRandomValues(new Uint8Array(size)),
+    digest: webCryptoDigest,
+  }),
+)
 
 export const makeTypeId = <
   const PrefixName extends string,

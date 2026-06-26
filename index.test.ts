@@ -8,6 +8,7 @@ import {
   makeTypeId,
   parse,
   type TypeIdFrom,
+  WebCrypto,
 } from "./index"
 
 const TestCrypto = Layer.succeed(
@@ -135,6 +136,35 @@ describe("TypeID spec", () => {
     const uuid = String(parts.uuid)
     expect(uuid[14]).toBe("7")
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
+  })
+
+  test("WebCrypto layer satisfies the Crypto requirement", async () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+    type UserId = TypeIdFrom<typeof UserId>
+
+    const program = Effect.gen(function* () {
+      const id: UserId = yield* UserId.generate
+      const uuid = yield* UserId.toUuid(id)
+      return { id, uuid }
+    })
+
+    // Providing WebCrypto removes Crypto.Crypto from the requirements channel,
+    // so the program can run with Effect.runPromise (R = never).
+    const { id, uuid } = await Effect.runPromise(
+      program.pipe(Effect.provide(WebCrypto)),
+    )
+
+    expect(UserId.is(id)).toBe(true)
+    const parts = Effect.runSync(UserId.parse(id))
+    expect(String(parts.prefix)).toBe("user")
+    expect(String(parts.uuid)).toBe(uuid)
+    expect(String(uuid)[14]).toBe("7")
+  })
+
+  test("generate produces unique ids with WebCrypto", async () => {
+    const a = await Effect.runPromise(generate("user").pipe(Effect.provide(WebCrypto)))
+    const b = await Effect.runPromise(generate("user").pipe(Effect.provide(WebCrypto)))
+    expect(a).not.toBe(b)
   })
 
   test("creates prefix-specific branded factories", () => {
