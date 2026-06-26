@@ -1,0 +1,21 @@
+.github/workflows/publish.yml
+  s_a8028f34561f22::t_888184199ec499 20-25
+mise.toml
+  s_a8028f34561f22::t_ebf8e135570e20 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "c8f2563f493ed32505615405381997aaa78bb636",
+  "prompts": {},
+  "sessions": {
+    "s_a8028f34561f22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6ad9fd2-c18c-4777-87c2-0af51f2de36c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
