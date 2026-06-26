@@ -14,7 +14,6 @@
       },
       "peerDependencies": {
         "effect": "^4.0.0-beta.90",
-        "typescript": "^7.0.1-rc",
       },
     },
   },

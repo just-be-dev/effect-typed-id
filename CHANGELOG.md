@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+### Changed
+
+- Removed `typescript` from peer dependencies; it remains a development dependency for local builds.
+
 ## 0.2.0
 
 ### Breaking Changes

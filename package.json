@@ -1,6 +1,6 @@
 {
   "name": "@just-be/effect-typed-id",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Effect TypeScript implementation of the TypeID spec",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,8 +29,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "effect": "^4.0.0-beta.90",
-    "typescript": "^7.0.1-rc"
+    "effect": "^4.0.0-beta.90"
   },
   "scripts": {
     "build": "rm -rf dist && tsgo && rm -f dist/*.test.*",
