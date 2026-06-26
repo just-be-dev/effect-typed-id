@@ -1,19 +1,44 @@
 {
-  "name": "effect-id",
+  "name": "effect-typed-id",
   "version": "0.1.0",
-  "module": "index.ts",
+  "description": "Effect TypeScript implementation of the TypeID spec",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
   "files": [
-    "index.ts",
+    "dist",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/just-be-dev/effect-typed-id.git"
+  },
+  "bugs": {
+    "url": "https://github.com/just-be-dev/effect-typed-id/issues"
+  },
+  "homepage": "https://github.com/just-be-dev/effect-typed-id#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0-beta.90",
+    "typescript": "^7.0.1-rc"
+  },
   "scripts": {
+    "build": "rm -rf dist && tsgo && rm -f dist/*.test.*",
+    "check": "bun run typecheck && bun run test",
+    "prepack": "bun run build",
     "test": "bun test",
     "typecheck": "tsgo --noEmit",
-    "prepare": "effect-tsgo patch"
+    "prepare": "bun run effect-tsgo patch"
   },
   "devDependencies": {
     "@effect/language-service": "^0.86.2",
@@ -23,7 +48,7 @@
     "effect-solutions": "^0.5.3",
     "typescript": "7.0.1-rc"
   },
-  "dependencies": {
-    "effect": "4.0.0-beta.90"
-  }
+  "trustedDependencies": [
+    "@typescript/native-preview"
+  ]
 }

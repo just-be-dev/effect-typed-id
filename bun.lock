@@ -3,10 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "effect-id",
-      "dependencies": {
-        "effect": "4.0.0-beta.90",
-      },
+      "name": "effect-typed-id",
       "devDependencies": {
         "@effect/language-service": "^0.86.2",
         "@effect/tsgo": "^0.14.6",
@@ -15,8 +12,15 @@
         "effect-solutions": "^0.5.3",
         "typescript": "7.0.1-rc",
       },
+      "peerDependencies": {
+        "effect": "^4.0.0-beta.90",
+        "typescript": "^7.0.1-rc",
+      },
     },
   },
+  "trustedDependencies": [
+    "@typescript/native-preview",
+  ],
   "packages": {
     "@effect/language-service": ["@effect/language-service@0.86.2", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-SaPln+8srOqDJDUwNTDmP5e+IYpEDr9+1epGznnsLqu8xvo6VnxyWARdeLpqvZJlb0Pgy9ca7ppqvvdWbHPXAg=="],
 
