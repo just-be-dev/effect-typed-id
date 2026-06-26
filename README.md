@@ -8,7 +8,7 @@ TypeIDs are type-safe UUIDv7 identifiers encoded as strict lowercase base32 with
 
 ```ts
 import { Effect } from "effect"
-import { makeTypeId, type TypeIdFrom } from "effect-typed-id"
+import { makeTypeId, type TypeIdFrom } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user", { brand: "UserId" })
 type UserId = TypeIdFrom<typeof UserId>
