@@ -1,0 +1,22 @@
+CHANGELOG.md
+  s_00b1ad6abc4125::t_ef224db5622b9d 3-8
+package.json
+  s_00b1ad6abc4125::t_871215adf53f4e 32
+  s_00b1ad6abc4125::t_ef224db5622b9d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "5987b7fbb3a1a3c511b908fefd77e29702847d02",
+  "prompts": {},
+  "sessions": {
+    "s_00b1ad6abc4125": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0fe3708b6ffe3I1wVpL3gKAfAz",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
