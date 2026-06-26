@@ -23,7 +23,7 @@ const program = Effect.gen(function* () {
 
 ## API
 
-- `generate(prefix?)`: create a UUIDv7 TypeID.
+- `generate(prefix)`: create a UUIDv7 TypeID.
 - `parse(typeid)`: validate and decode a TypeID into `{ prefix, suffix, uuid, typeid }`.
 - `fromUuid(prefix, uuid)`: encode a canonical UUID string as a TypeID.
 - `encodeUuid(uuid)`: encode a UUID as a 26-character TypeID suffix.

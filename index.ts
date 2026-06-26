@@ -205,7 +205,7 @@ export const parse = Effect.fn("TypeId.parse")(function* (input: string) {
 
 export const make = (prefix: string, uuid: string) => fromUuid(prefix, uuid)
 
-export const generate = Effect.fn("TypeId.generate")(function* (prefix = "") {
+export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) {
   const validPrefix = yield* validatePrefix(prefix)
   const crypto = yield* Crypto.Crypto
   const uuid = yield* crypto.randomUUIDv7.pipe(Effect.flatMap(validateUuid))
