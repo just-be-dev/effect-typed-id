@@ -1,0 +1,25 @@
+README.md
+  s_a8028f34561f22::t_7a47c4044f7e51 26
+package.json
+  s_a8028f34561f22::t_6d405d7ed36890 3
+CHANGELOG.md
+  s_a8028f34561f22::t_c7b1ebdcdb98f4 1-11
+index.ts
+  s_a8028f34561f22::t_8767779cc82009 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "026b59a6b3787ac2fd86fed54d1b89486eeb7e7a",
+  "prompts": {},
+  "sessions": {
+    "s_a8028f34561f22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6ad9fd2-c18c-4777-87c2-0af51f2de36c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
