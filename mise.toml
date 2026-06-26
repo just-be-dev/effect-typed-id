@@ -10,3 +10,49 @@ postinstall = "bun install"
 
 [env]
 _.path = "node_modules/.bin"
+
+[tasks.check]
+description = "Run type checks and tests"
+run = "bun run check"
+
+[tasks.build]
+description = "Build package output"
+run = "bun run build"
+
+[tasks.package-version]
+description = "Write package name and version to GitHub Actions output"
+run = '''
+bun -e "
+  const pkg = await Bun.file('package.json').json()
+  console.log('name=' + pkg.name)
+  console.log('version=' + pkg.version)
+" >> "${GITHUB_OUTPUT:-/dev/stdout}"
+'''
+
+[tasks.registry-check]
+description = "Write whether the package version already exists to GitHub Actions output"
+run = '''
+bun -e "
+  const name = Bun.env.PKG_NAME
+  const version = Bun.env.PKG_VERSION
+  if (!name || !version) throw new Error('PKG_NAME and PKG_VERSION are required')
+
+  const spec = encodeURIComponent(name).replace('%40', '@')
+  const response = await fetch('https://registry.npmjs.org/' + spec)
+  let exists
+  if (response.status === 404) {
+    exists = false
+  } else if (!response.ok) {
+    throw new Error('Registry lookup failed: ' + response.status + ' ' + response.statusText)
+  } else {
+    const metadata = await response.json()
+    exists = Boolean(metadata.versions?.[version])
+  }
+
+  console.log('exists=' + String(exists))
+" >> "${GITHUB_OUTPUT:-/dev/stdout}"
+'''
+
+[tasks.publish]
+description = "Publish the package to npm"
+run = "bun publish --access public"

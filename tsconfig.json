@@ -12,9 +12,12 @@
 
     // Bundler mode
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": ".",
+    "outDir": "dist",
 
     // Best practices
     "strict": true,
@@ -31,5 +34,8 @@
     "plugins": [
       { "name": "@effect/language-service" }
     ]
-  }
+  },
+  "include": [
+    "*.ts"
+  ]
 }
