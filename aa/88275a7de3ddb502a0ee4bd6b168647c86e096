@@ -1,0 +1,19 @@
+package.json
+  s_bbc88ae7bace21::t_ac98679f58318f 2,4,6-7,9-13,16,19-34,36-38,41,51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "aa88275a7de3ddb502a0ee4bd6b168647c86e096",
+  "prompts": {},
+  "sessions": {
+    "s_bbc88ae7bace21": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0fe6a9169ffe0Q9ZLFYoMPcEcG",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
