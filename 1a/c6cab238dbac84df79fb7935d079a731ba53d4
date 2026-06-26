@@ -1,0 +1,19 @@
+.github/workflows/publish.yml
+  s_bbc88ae7bace21::t_ac98679f58318f 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "1ac6cab238dbac84df79fb7935d079a731ba53d4",
+  "prompts": {},
+  "sessions": {
+    "s_bbc88ae7bace21": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0fe6a9169ffe0Q9ZLFYoMPcEcG",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
