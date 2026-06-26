@@ -1,0 +1,42 @@
+name: Publish Package
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish if version is new
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+
+      - name: Check
+        run: mise run check
+
+      - name: Build
+        run: mise run build
+
+      - name: Read package version
+        id: pkg
+        run: mise run package-version
+
+      - name: Check registry
+        id: registry
+        env:
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+        run: mise run registry-check
+
+      - name: Publish
+        if: steps.registry.outputs.exists == 'false'
+        run: mise run publish
