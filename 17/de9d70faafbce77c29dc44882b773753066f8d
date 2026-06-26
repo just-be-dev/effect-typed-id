@@ -1,0 +1,19 @@
+README.md
+  s_54ab331d0b1369::t_91aec6ff62c7f6 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "17de9d70faafbce77c29dc44882b773753066f8d",
+  "prompts": {},
+  "sessions": {
+    "s_54ab331d0b1369": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0fe6d0253ffefegAD3Sm0XpAyA",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
