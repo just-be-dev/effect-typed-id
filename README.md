@@ -7,8 +7,8 @@ TypeIDs are type-safe UUIDv7 identifiers encoded as strict lowercase base32 with
 ## Usage
 
 ```ts
-import { Effect } from "effect"
-import { makeTypeId, type TypeIdFrom } from "@just-be/effect-typed-id"
+import { Effect, Layer } from "effect"
+import { makeTypeId, type TypeIdFrom, WebCrypto } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user", { brand: "UserId" })
 type UserId = TypeIdFrom<typeof UserId>
@@ -20,38 +20,75 @@ const program = Effect.gen(function* () {
   return { id, uuid }
 })
 
-// Factory `generate` defaults to the bundled `WebCrypto` layer, so the program
-// runs with no extra wiring:
-const result = await Effect.runPromise(program)
+// `UserId.generate` requires the factory's generator service. Provide
+// `UserId.layer` (which depends on `Crypto.Crypto`) with a Crypto layer fed in,
+// and every requirement is discharged:
+const result = await Effect.runPromise(
+  program.pipe(Effect.provide(UserId.layer.pipe(Layer.provide(WebCrypto)))),
+)
 ```
 
 ## Providing Crypto
 
-`generate` needs Effect's `Crypto.Crypto` service to produce a UUIDv7.
+`generate` needs Effect's `Crypto.Crypto` service to produce a UUIDv7. Following
+the Effect dependency-injection model, each `makeTypeId` factory defines its own
+**service** for this, exposed as two members:
 
-`makeTypeId` factories supply this for you: their `generate` defaults to the
-bundled `WebCrypto` layer, so the `Crypto.Crypto` requirement is already
-discharged and you can `Effect.runPromise` the factory's `generate` directly.
+- `UserId.tag` — the service key. `UserId.generate` yields it, so it carries
+  `TypeIdGenerator<"UserId">` in its requirements channel.
+- `UserId.layer` — a `Layer` that builds the service from `Crypto.Crypto`
+  (`Layer<TypeIdGenerator<"UserId">, never, Crypto.Crypto>`).
+
+Provide the layer once at the edge of your program. Feeding a `Crypto.Crypto`
+layer into it produces a self-contained layer, so a single `Effect.provide`
+discharges everything:
+
+```ts
+import { Effect, Layer } from "effect"
+import { makeTypeId, WebCrypto } from "@just-be/effect-typed-id"
+
+const UserId = makeTypeId("user", { brand: "UserId" })
+
+const live = UserId.layer.pipe(Layer.provide(WebCrypto))
+
+await Effect.runPromise(UserId.generate.pipe(Effect.provide(live)))
+```
 
 `WebCrypto` is backed by the standard
 [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 (`globalThis.crypto`), available on Bun, Node.js 20+, Deno, browsers, and
-Cloudflare Workers.
-
-To use a different implementation, pass a `crypto` layer when creating the
-factory — for example a platform layer like `NodeCrypto.layer` from
-`@effect/platform-node`, or a deterministic layer in tests:
+Cloudflare Workers. You can feed in any `Crypto.Crypto` layer instead — a
+platform layer like `NodeCrypto.layer` from `@effect/platform-node`, or a
+deterministic layer in tests:
 
 ```ts
 import { NodeCrypto } from "@effect/platform-node"
 
-const UserId = makeTypeId("user", { crypto: NodeCrypto.layer })
+const live = UserId.layer.pipe(Layer.provide(NodeCrypto.layer))
 ```
 
-The **standalone** `generate(prefix)` export has no creation step, so it still
-carries `Crypto.Crypto` in its requirements channel and you must provide a
-layer before running it — otherwise the requirement surfaces as a type error
-such as `Type Crypto is not assignable to type never`:
+### Build the layer once
+
+Because the crypto service is resolved when the layer is built, use a
+`ManagedRuntime` (or your application's runtime) to build it a single time and
+reuse it across many generations:
+
+```ts
+import { ManagedRuntime, Layer } from "effect"
+
+const runtime = ManagedRuntime.make(UserId.layer.pipe(Layer.provide(WebCrypto)))
+
+const a = await runtime.runPromise(UserId.generate)
+const b = await runtime.runPromise(UserId.generate)
+// ... await runtime.dispose() on shutdown
+```
+
+### Standalone `generate`
+
+The **standalone** `generate(prefix)` export has no factory/service, so it
+carries `Crypto.Crypto` directly in its requirements channel and you provide a
+crypto layer before running it — otherwise the requirement surfaces as a type
+error such as `Type Crypto is not assignable to type never`:
 
 ```ts
 import { Effect } from "effect"
@@ -72,17 +109,20 @@ not require `Crypto`.
 - `fromUuid(prefix, uuid)`: encode a canonical UUID string as a TypeID.
 - `encodeUuid(uuid)`: encode a UUID as a 26-character TypeID suffix.
 - `decodeUuid(suffix)`: decode a TypeID suffix to a canonical UUID string.
-- `makeTypeId(prefix, options?)`: create a prefix-specific factory whose methods return branded IDs. Pass `options.crypto` to override the default `WebCrypto` layer used by the factory's `generate`.
-- `WebCrypto`: a `Crypto.Crypto` layer backed by the Web Crypto API; the factory default, and provideable to the standalone `generate`.
+- `makeTypeId(prefix, options?)`: create a prefix-specific factory whose methods return branded IDs, including its own generator service (`tag` + `layer`).
+- `WebCrypto`: a `Crypto.Crypto` layer backed by the Web Crypto API; feed it into a factory `layer` or provide it to the standalone `generate`.
 - `TypeIdError`: typed Effect error for validation failures.
 
-Factory methods:
+Factory members:
 
-- `generate`: create a new branded UUIDv7 TypeID for the factory prefix.
+- `generate`: effect that creates a new branded UUIDv7 TypeID; requires the factory's generator service (provide `layer`).
+- `layer`: `Layer<TypeIdGenerator<Name>, never, Crypto.Crypto>` that builds the generator service.
+- `tag`: the Effect service key for the generator.
 - `fromUuid(uuid)`: encode a UUID as the branded TypeID.
 - `parse(input)`: validate a string and return branded TypeID parts.
 - `toUuid(id)`: decode a branded TypeID to its UUID.
-- `is(input)`: runtime type guard for the branded TypeID.
+- `is(input)`: runtime type guard for the branded TypeID (synchronous).
+- `unsafeParse(input)` / `unsafeFromUuid(uuid)`: synchronous variants that throw on invalid input.
 
 ## Development
 

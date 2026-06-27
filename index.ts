@@ -1,4 +1,4 @@
-import { Brand, Crypto, Effect, Layer, PlatformError, Schema } from "effect"
+import { Brand, Context, Crypto, Effect, Layer, PlatformError, Schema } from "effect"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -43,12 +43,44 @@ export interface TypeIdPartsOf<Name extends string> extends Omit<TypeIdParts, "t
   readonly typeid: TypeIdOf<Name>
 }
 
-export interface TypeIdFactory<Name extends string> {
-  readonly brand: Name
-  readonly prefix: Prefix
+/**
+ * The shape of a prefix-specific TypeID service.
+ *
+ * Each `makeTypeId` factory defines its own service whose only member is the
+ * crypto-dependent `generate` effect. Resolving the service (via the factory's
+ * `layer`) provides a `generate` whose `Crypto.Crypto` requirement has already
+ * been discharged.
+ */
+export interface TypeIdGenerator<Name extends string> {
   readonly generate: Effect.Effect<
     TypeIdOf<Name>,
     TypeIdError | PlatformError.PlatformError
+  >
+}
+
+export interface TypeIdFactory<Name extends string> {
+  readonly brand: Name
+  readonly prefix: Prefix
+  /**
+   * The Effect service key for this factory's generator. Yield it to obtain the
+   * resolved `generate` effect once the `layer` has been provided.
+   */
+  readonly tag: Context.Service<TypeIdGenerator<Name>, TypeIdGenerator<Name>>
+  /**
+   * A layer that builds the generator service from `Crypto.Crypto`. Provide it
+   * once at the edge of your program; the `Crypto.Crypto` dependency flows
+   * through the layer graph and is resolved a single time.
+   */
+  readonly layer: Layer.Layer<TypeIdGenerator<Name>, never, Crypto.Crypto>
+  /**
+   * Generate a new branded TypeID. Requires this factory's generator service in
+   * the requirements channel; provide `layer` (plus a `Crypto.Crypto` layer such
+   * as `WebCrypto`) to run it.
+   */
+  readonly generate: Effect.Effect<
+    TypeIdOf<Name>,
+    TypeIdError | PlatformError.PlatformError,
+    TypeIdGenerator<Name>
   >
   readonly fromUuid: (uuid: string) => Effect.Effect<TypeIdOf<Name>, TypeIdError>
   readonly parse: (input: string) => Effect.Effect<TypeIdPartsOf<Name>, TypeIdError>
@@ -235,12 +267,9 @@ const webCryptoDigest = (
  * A `Crypto.Crypto` layer backed by the standard Web Crypto API
  * (`globalThis.crypto`).
  *
- * This is the default crypto used by `makeTypeId` factories, so factory
- * `generate` works without any `Effect.provide` on runtimes that expose Web
- * Crypto, including Bun, Node.js 20+, Deno, browsers, and Cloudflare Workers.
- *
- * Provide it explicitly to satisfy the `Crypto.Crypto` requirement of the
- * standalone `generate` export:
+ * Provide it to satisfy the `Crypto.Crypto` requirement of a factory's `layer`
+ * (or the standalone `generate` export) on any runtime that exposes Web Crypto,
+ * including Bun, Node.js 20+, Deno, browsers, and Cloudflare Workers:
  *
  * ```ts
  * import { Effect } from "effect"
@@ -265,14 +294,10 @@ export const makeTypeId = <
   const BrandName extends string = PrefixName,
 >(
   prefix: PrefixName,
-  options?: {
-    readonly brand?: BrandName
-    readonly crypto?: Layer.Layer<Crypto.Crypto>
-  },
+  options?: { readonly brand?: BrandName },
 ): TypeIdFactory<BrandName> => {
   const validPrefix = Effect.runSync(validatePrefix(prefix))
   const brand = (options?.brand ?? prefix) as BrandName
-  const cryptoLayer = options?.crypto ?? WebCrypto
   const brandTypeId = (typeid: TypeId): TypeIdOf<BrandName> =>
     typeid as TypeIdOf<BrandName>
 
@@ -294,11 +319,6 @@ export const makeTypeId = <
     } satisfies TypeIdPartsOf<BrandName>
   })
 
-  const generated = Effect.fn(`TypeId.${brand}.generate`)(function* () {
-    const id = yield* generate(validPrefix)
-    return brandTypeId(id)
-  })
-
   const fromUuidForPrefix = Effect.fn(`TypeId.${brand}.fromUuid`)(function* (
     uuid: string,
   ) {
@@ -306,10 +326,37 @@ export const makeTypeId = <
     return brandTypeId(id)
   })
 
+  // A distinct Effect service per brand. The runtime identity is the key
+  // string; the type identity is `TypeIdGenerator<BrandName>`, which embeds the
+  // brand so different factories resolve to different services.
+  const tag = Context.Service<TypeIdGenerator<BrandName>>(
+    `@just-be/effect-typed-id/${brand}`,
+  )
+
+  // The layer acquires Crypto.Crypto once and closes over it, so the resolved
+  // `generate` no longer carries the dependency.
+  const layer: Layer.Layer<TypeIdGenerator<BrandName>, never, Crypto.Crypto> =
+    Layer.effect(
+      tag,
+      Effect.gen(function* () {
+        const crypto = yield* Crypto.Crypto
+        const generate = Effect.fn(`TypeId.${brand}.generate`)(function* () {
+          const uuid = yield* crypto.randomUUIDv7.pipe(
+            Effect.flatMap(validateUuid),
+          )
+          const suffix = encodeBytes(uuidToBytes(uuid))
+          return brandTypeId(format(validPrefix, suffix))
+        })
+        return { generate: generate() }
+      }),
+    )
+
   return {
     brand,
     prefix: validPrefix,
-    generate: generated().pipe(Effect.provide(cryptoLayer)),
+    tag,
+    layer,
+    generate: Effect.flatMap(tag, (service) => service.generate),
     fromUuid: fromUuidForPrefix,
     parse: parseForPrefix,
     toUuid: (id) => parseForPrefix(id).pipe(Effect.map((parts) => parts.uuid)),

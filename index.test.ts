@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Crypto, Effect, Layer } from "effect"
+import { Crypto, Effect, Layer, ManagedRuntime } from "effect"
 import {
   decodeUuid,
   encodeUuid,
@@ -138,7 +138,7 @@ describe("TypeID spec", () => {
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
   })
 
-  test("factory generate runs without an explicit Crypto layer", async () => {
+  test("factory generate runs once the layer and Crypto are provided", async () => {
     const UserId = makeTypeId("user", { brand: "UserId" })
     type UserId = TypeIdFrom<typeof UserId>
 
@@ -148,9 +148,11 @@ describe("TypeID spec", () => {
       return { id, uuid }
     })
 
-    // Factory generate defaults to WebCrypto, so Crypto.Crypto is already
-    // discharged (R = never) and the program runs with no Effect.provide.
-    const { id, uuid } = await Effect.runPromise(program)
+    // Feeding a Crypto layer into the factory layer yields a self-contained
+    // layer, so a single provide discharges every requirement (R = never).
+    const { id, uuid } = await Effect.runPromise(
+      program.pipe(Effect.provide(UserId.layer.pipe(Layer.provide(WebCrypto)))),
+    )
 
     expect(UserId.is(id)).toBe(true)
     const parts = Effect.runSync(UserId.parse(id))
@@ -161,15 +163,42 @@ describe("TypeID spec", () => {
 
   test("factory generate produces unique ids", async () => {
     const UserId = makeTypeId("user")
-    const a = await Effect.runPromise(UserId.generate)
-    const b = await Effect.runPromise(UserId.generate)
+    const run = UserId.generate.pipe(
+      Effect.provide(UserId.layer.pipe(Layer.provide(WebCrypto))),
+    )
+    const a = await Effect.runPromise(run)
+    const b = await Effect.runPromise(run)
     expect(a).not.toBe(b)
   })
 
-  test("factory accepts a custom Crypto layer", () => {
-    const UserId = makeTypeId("user", { brand: "UserId", crypto: TestCrypto })
-    const id = Effect.runSync(UserId.generate)
+  test("factory layer accepts any Crypto.Crypto implementation", () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+    const id = Effect.runSync(
+      UserId.generate.pipe(
+        Effect.provide(UserId.layer.pipe(Layer.provide(TestCrypto))),
+      ),
+    )
     expect(UserId.is(id)).toBe(true)
+  })
+
+  test("a ManagedRuntime provides the layer once for many runs", async () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+    const runtime = ManagedRuntime.make(UserId.layer.pipe(Layer.provide(WebCrypto)))
+
+    try {
+      const a = await runtime.runPromise(UserId.generate)
+      const b = await runtime.runPromise(UserId.generate)
+      expect(UserId.is(a)).toBe(true)
+      expect(a).not.toBe(b)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  test("distinct factories expose distinct services", () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+    const AccountId = makeTypeId("account", { brand: "AccountId" })
+    expect(UserId.tag.key).not.toBe(AccountId.tag.key)
   })
 
   test("standalone generate still requires a provided Crypto layer", async () => {
@@ -180,7 +209,7 @@ describe("TypeID spec", () => {
   })
 
   test("creates prefix-specific branded factories", () => {
-    const UserId = makeTypeId("user", { brand: "UserId", crypto: TestCrypto })
+    const UserId = makeTypeId("user", { brand: "UserId" })
     type UserId = TypeIdFrom<typeof UserId>
 
     const fromUuidId: UserId = Effect.runSync(
@@ -188,7 +217,11 @@ describe("TypeID spec", () => {
     )
     expect(String(fromUuidId)).toBe("user_01h455vb4pex5vsknk084sn02q")
 
-    const generatedId: UserId = Effect.runSync(UserId.generate)
+    const generatedId: UserId = Effect.runSync(
+      UserId.generate.pipe(
+        Effect.provide(UserId.layer.pipe(Layer.provide(TestCrypto))),
+      ),
+    )
     const generatedParts = Effect.runSync(UserId.parse(generatedId))
     expect(String(generatedParts.prefix)).toBe("user")
 
