@@ -135,6 +135,26 @@ describe("TypeID spec", () => {
     const uuid = String(parts.uuid)
     expect(uuid[14]).toBe("7")
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
+    expect(uuid.slice(14)).toBe("7101-8101-010101010101")
+  })
+
+  test("generates TypeIDs with default Web Crypto", async () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+    type UserId = TypeIdFrom<typeof UserId>
+
+    const program = Effect.gen(function* () {
+      const id: UserId = yield* UserId.generate
+      const uuid = yield* UserId.toUuid(id)
+
+      return { id, uuid }
+    })
+
+    const result = await Effect.runPromise(program)
+
+    expect(UserId.is(result.id)).toBe(true)
+    expect(String(result.uuid)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
   })
 
   test("creates prefix-specific branded factories", () => {
@@ -157,5 +177,27 @@ describe("TypeID spec", () => {
     )
     expect(UserId.is("user_01h455vb4pex5vsknk084sn02q")).toBe(true)
     expect(UserId.is("account_01h455vb4pex5vsknk084sn02q")).toBe(false)
+  })
+
+  test("defaults factory brand names from prefixes", () => {
+    const UserId = makeTypeId("user")
+    type UserId = TypeIdFrom<typeof UserId>
+
+    const TeamMemberId = makeTypeId("team_member")
+    type TeamMemberId = TypeIdFrom<typeof TeamMemberId>
+
+    const userId: UserId = Effect.runSync(
+      UserId.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
+    )
+    const teamMemberId: TeamMemberId = Effect.runSync(
+      TeamMemberId.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
+    )
+
+    expect(UserId.brand).toBe("UserId")
+    expect(TeamMemberId.brand).toBe("TeamMemberId")
+    expect(String(userId)).toBe("user_01h455vb4pex5vsknk084sn02q")
+    expect(String(teamMemberId)).toBe(
+      "team_member_01h455vb4pex5vsknk084sn02q",
+    )
   })
 })

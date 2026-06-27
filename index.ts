@@ -1,4 +1,4 @@
-import { Brand, Crypto, Effect, PlatformError, Schema } from "effect"
+import { Brand, Crypto, Effect, Layer, Option, PlatformError, Schema } from "effect"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -9,6 +9,45 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 const alphabetValues = new Map<string, number>(
   Array.from(alphabet, (character, index) => [character, index]),
 )
+
+const systemError = (
+  method: string,
+  options: { readonly description?: string; readonly cause?: unknown },
+) =>
+  PlatformError.systemError({
+    _tag: "Unknown",
+    module: "TypeId",
+    method,
+    ...options,
+  })
+
+const makeWebCrypto = (webCrypto: typeof globalThis.crypto): Crypto.Crypto =>
+  Crypto.make({
+    randomBytes: (size) =>
+      webCrypto.getRandomValues(new Uint8Array(size)),
+    digest: (algorithm, data) =>
+      Effect.tryPromise({
+        try: () => webCrypto.subtle.digest(algorithm, new Uint8Array(data)),
+        catch: (cause) => systemError("digest", { cause }),
+      }).pipe(Effect.map((buffer) => new Uint8Array(buffer))),
+  })
+
+// globalThis.crypto is a stable singleton, so build the Crypto instance once.
+const webCrypto: Crypto.Crypto | undefined =
+  globalThis.crypto === undefined ? undefined : makeWebCrypto(globalThis.crypto)
+
+const getWebCrypto = (
+  method: string,
+): Effect.Effect<Crypto.Crypto, PlatformError.PlatformError> =>
+  webCrypto === undefined
+    ? Effect.fail(
+        systemError(method, {
+          description: "globalThis.crypto is not available",
+        }),
+      )
+    : Effect.succeed(webCrypto)
+
+export const WebCryptoLive = Layer.effect(Crypto.Crypto, getWebCrypto("WebCryptoLive"))
 
 export const Prefix = Schema.String.pipe(Schema.brand("TypeIdPrefix"))
 export type Prefix = typeof Prefix.Type
@@ -23,6 +62,11 @@ export const TypeId = Schema.String.pipe(Schema.brand("TypeId"))
 export type TypeId = typeof TypeId.Type
 
 export type TypeIdOf<Name extends string> = TypeId & Brand.Brand<Name>
+
+type DefaultBrandName<PrefixName extends string> =
+  PrefixName extends `${infer Head}_${infer Tail}`
+    ? `${Capitalize<Head>}${DefaultBrandName<Tail>}`
+    : `${Capitalize<PrefixName>}Id`
 
 export class TypeIdError extends Schema.TaggedErrorClass<TypeIdError>()(
   "TypeIdError",
@@ -48,8 +92,7 @@ export interface TypeIdFactory<Name extends string> {
   readonly prefix: Prefix
   readonly generate: Effect.Effect<
     TypeIdOf<Name>,
-    TypeIdError | PlatformError.PlatformError,
-    Crypto.Crypto
+    TypeIdError | PlatformError.PlatformError
   >
   readonly fromUuid: (uuid: string) => Effect.Effect<TypeIdOf<Name>, TypeIdError>
   readonly parse: (input: string) => Effect.Effect<TypeIdPartsOf<Name>, TypeIdError>
@@ -159,6 +202,12 @@ const decodeSuffixToBytes = (suffix: Suffix): Uint8Array => {
 const format = (prefix: Prefix, suffix: Suffix): TypeId =>
   TypeId.make(prefix.length === 0 ? suffix : `${prefix}_${suffix}`)
 
+const defaultBrandName = (prefix: string): string =>
+  `${prefix
+    .split("_")
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+    .join("")}Id`
+
 export const encodeUuid = Effect.fn("TypeId.encodeUuid")(function* (
   uuid: string,
 ) {
@@ -207,7 +256,14 @@ export const make = (prefix: string, uuid: string) => fromUuid(prefix, uuid)
 
 export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) {
   const validPrefix = yield* validatePrefix(prefix)
-  const crypto = yield* Crypto.Crypto
+  const crypto = yield* Effect.serviceOption(Crypto.Crypto).pipe(
+    Effect.flatMap(
+      Option.match({
+        onNone: () => getWebCrypto("generate"),
+        onSome: Effect.succeed,
+      }),
+    ),
+  )
   const uuid = yield* crypto.randomUUIDv7.pipe(Effect.flatMap(validateUuid))
   const suffix = encodeBytes(uuidToBytes(uuid))
   return format(validPrefix, suffix)
@@ -215,13 +271,13 @@ export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) 
 
 export const makeTypeId = <
   const PrefixName extends string,
-  const BrandName extends string = PrefixName,
+  const BrandName extends string = DefaultBrandName<PrefixName>,
 >(
   prefix: PrefixName,
   options?: { readonly brand?: BrandName },
 ): TypeIdFactory<BrandName> => {
   const validPrefix = Effect.runSync(validatePrefix(prefix))
-  const brand = (options?.brand ?? prefix) as BrandName
+  const brand = (options?.brand ?? defaultBrandName(prefix)) as BrandName
   const brandTypeId = (typeid: TypeId): TypeIdOf<BrandName> =>
     typeid as TypeIdOf<BrandName>
 
