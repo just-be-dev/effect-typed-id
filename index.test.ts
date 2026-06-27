@@ -138,7 +138,7 @@ describe("TypeID spec", () => {
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
   })
 
-  test("WebCrypto layer satisfies the Crypto requirement", async () => {
+  test("factory generate runs without an explicit Crypto layer", async () => {
     const UserId = makeTypeId("user", { brand: "UserId" })
     type UserId = TypeIdFrom<typeof UserId>
 
@@ -148,11 +148,9 @@ describe("TypeID spec", () => {
       return { id, uuid }
     })
 
-    // Providing WebCrypto removes Crypto.Crypto from the requirements channel,
-    // so the program can run with Effect.runPromise (R = never).
-    const { id, uuid } = await Effect.runPromise(
-      program.pipe(Effect.provide(WebCrypto)),
-    )
+    // Factory generate defaults to WebCrypto, so Crypto.Crypto is already
+    // discharged (R = never) and the program runs with no Effect.provide.
+    const { id, uuid } = await Effect.runPromise(program)
 
     expect(UserId.is(id)).toBe(true)
     const parts = Effect.runSync(UserId.parse(id))
@@ -161,14 +159,28 @@ describe("TypeID spec", () => {
     expect(String(uuid)[14]).toBe("7")
   })
 
-  test("generate produces unique ids with WebCrypto", async () => {
-    const a = await Effect.runPromise(generate("user").pipe(Effect.provide(WebCrypto)))
-    const b = await Effect.runPromise(generate("user").pipe(Effect.provide(WebCrypto)))
+  test("factory generate produces unique ids", async () => {
+    const UserId = makeTypeId("user")
+    const a = await Effect.runPromise(UserId.generate)
+    const b = await Effect.runPromise(UserId.generate)
     expect(a).not.toBe(b)
   })
 
+  test("factory accepts a custom Crypto layer", () => {
+    const UserId = makeTypeId("user", { brand: "UserId", crypto: TestCrypto })
+    const id = Effect.runSync(UserId.generate)
+    expect(UserId.is(id)).toBe(true)
+  })
+
+  test("standalone generate still requires a provided Crypto layer", async () => {
+    const id = await Effect.runPromise(
+      generate("user").pipe(Effect.provide(WebCrypto)),
+    )
+    expect(String(id).startsWith("user_")).toBe(true)
+  })
+
   test("creates prefix-specific branded factories", () => {
-    const UserId = makeTypeId("user", { brand: "UserId" })
+    const UserId = makeTypeId("user", { brand: "UserId", crypto: TestCrypto })
     type UserId = TypeIdFrom<typeof UserId>
 
     const fromUuidId: UserId = Effect.runSync(
@@ -176,9 +188,7 @@ describe("TypeID spec", () => {
     )
     expect(String(fromUuidId)).toBe("user_01h455vb4pex5vsknk084sn02q")
 
-    const generatedId: UserId = Effect.runSync(
-      UserId.generate.pipe(Effect.provide(TestCrypto)),
-    )
+    const generatedId: UserId = Effect.runSync(UserId.generate)
     const generatedParts = Effect.runSync(UserId.parse(generatedId))
     expect(String(generatedParts.prefix)).toBe("user")
 

@@ -48,8 +48,7 @@ export interface TypeIdFactory<Name extends string> {
   readonly prefix: Prefix
   readonly generate: Effect.Effect<
     TypeIdOf<Name>,
-    TypeIdError | PlatformError.PlatformError,
-    Crypto.Crypto
+    TypeIdError | PlatformError.PlatformError
   >
   readonly fromUuid: (uuid: string) => Effect.Effect<TypeIdOf<Name>, TypeIdError>
   readonly parse: (input: string) => Effect.Effect<TypeIdPartsOf<Name>, TypeIdError>
@@ -236,9 +235,12 @@ const webCryptoDigest = (
  * A `Crypto.Crypto` layer backed by the standard Web Crypto API
  * (`globalThis.crypto`).
  *
- * Provide this to satisfy the `Crypto.Crypto` requirement of `generate` (and
- * factory `generate`) on any runtime that exposes Web Crypto, including Bun,
- * Node.js 20+, Deno, browsers, and Cloudflare Workers:
+ * This is the default crypto used by `makeTypeId` factories, so factory
+ * `generate` works without any `Effect.provide` on runtimes that expose Web
+ * Crypto, including Bun, Node.js 20+, Deno, browsers, and Cloudflare Workers.
+ *
+ * Provide it explicitly to satisfy the `Crypto.Crypto` requirement of the
+ * standalone `generate` export:
  *
  * ```ts
  * import { Effect } from "effect"
@@ -263,10 +265,14 @@ export const makeTypeId = <
   const BrandName extends string = PrefixName,
 >(
   prefix: PrefixName,
-  options?: { readonly brand?: BrandName },
+  options?: {
+    readonly brand?: BrandName
+    readonly crypto?: Layer.Layer<Crypto.Crypto>
+  },
 ): TypeIdFactory<BrandName> => {
   const validPrefix = Effect.runSync(validatePrefix(prefix))
   const brand = (options?.brand ?? prefix) as BrandName
+  const cryptoLayer = options?.crypto ?? WebCrypto
   const brandTypeId = (typeid: TypeId): TypeIdOf<BrandName> =>
     typeid as TypeIdOf<BrandName>
 
@@ -303,7 +309,7 @@ export const makeTypeId = <
   return {
     brand,
     prefix: validPrefix,
-    generate: generated(),
+    generate: generated().pipe(Effect.provide(cryptoLayer)),
     fromUuid: fromUuidForPrefix,
     parse: parseForPrefix,
     toUuid: (id) => parseForPrefix(id).pipe(Effect.map((parts) => parts.uuid)),
