@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added a default Web Crypto implementation for `generate`.
+- Added `WebCryptoLive`, an explicit `Crypto` provider backed by `globalThis.crypto`.
+
+### Changed
+
+- `makeTypeId(prefix)` now defaults the brand to the PascalCase prefix plus `Id`.
+
 ## 0.3.0
 
 ### Changed
