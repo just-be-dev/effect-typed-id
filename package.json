@@ -1,6 +1,6 @@
 {
   "name": "@just-be/effect-typed-id",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Effect TypeScript implementation of the TypeID spec",
   "type": "module",
   "main": "./dist/index.js",
