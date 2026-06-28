@@ -5,6 +5,7 @@ import {
   encodeUuid,
   fromUuid,
   generate,
+  IdGenerators,
   makeTypeId,
   parse,
   type TypeIdFrom,
@@ -17,6 +18,9 @@ const TestCrypto = Layer.succeed(
     digest: (_algorithm, data) => Effect.succeed(data),
   }),
 )
+
+const TestUuidV7 = IdGenerators.uuidV7.pipe(Layer.provide(TestCrypto))
+const TestUuidV4 = IdGenerators.uuidV4.pipe(Layer.provide(TestCrypto))
 
 const validCases = [
   {
@@ -128,7 +132,7 @@ describe("TypeID spec", () => {
   }
 
   test("generates UUIDv7 TypeIDs", () => {
-    const typeid = Effect.runSync(generate("user").pipe(Effect.provide(TestCrypto)))
+    const typeid = Effect.runSync(generate("user").pipe(Effect.provide(TestUuidV7)))
     const parts = Effect.runSync(parse(typeid))
 
     expect(String(parts.prefix)).toBe("user")
@@ -138,7 +142,13 @@ describe("TypeID spec", () => {
     expect(uuid.slice(14)).toBe("7101-8101-010101010101")
   })
 
-  test("generates TypeIDs with default Web Crypto", async () => {
+  test("requires an explicit generator service for generation", () => {
+    expect(() =>
+      Effect.runSync(generate("user") as Effect.Effect<unknown, unknown>),
+    ).toThrow()
+  })
+
+  test("generates TypeIDs with an Effect-native service", () => {
     const UserId = makeTypeId("user", { brand: "UserId" })
     type UserId = TypeIdFrom<typeof UserId>
 
@@ -149,34 +159,38 @@ describe("TypeID spec", () => {
       return { id, uuid }
     })
 
-    const result = await Effect.runPromise(program)
-
-    expect(UserId.is(result.id)).toBe(true)
-    expect(String(result.uuid)).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    const result = Effect.runSync(
+      program.pipe(Effect.provide(UserId.layer.pipe(Layer.provide(TestUuidV7)))),
     )
+
+    expect(String(result.id)).toMatch(/^user_/)
+    expect(String(result.uuid)[14]).toBe("7")
+    expect(["8", "9", "a", "b"]).toContain(String(result.uuid)[19]!)
+    expect(String(result.uuid).slice(14)).toBe("7101-8101-010101010101")
   })
 
   test("creates prefix-specific branded factories", () => {
     const UserId = makeTypeId("user", { brand: "UserId" })
     type UserId = TypeIdFrom<typeof UserId>
 
+    const userIds = Effect.runSync(
+      UserId.pipe(Effect.provide(UserId.layer.pipe(Layer.provide(TestUuidV7)))),
+    )
+
     const fromUuidId: UserId = Effect.runSync(
-      UserId.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
+      userIds.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
     )
     expect(String(fromUuidId)).toBe("user_01h455vb4pex5vsknk084sn02q")
 
-    const generatedId: UserId = Effect.runSync(
-      UserId.generate.pipe(Effect.provide(TestCrypto)),
-    )
-    const generatedParts = Effect.runSync(UserId.parse(generatedId))
+    const generatedId: UserId = Effect.runSync(userIds.generate)
+    const generatedParts = Effect.runSync(userIds.parse(generatedId))
     expect(String(generatedParts.prefix)).toBe("user")
 
-    expect(String(Effect.runSync(UserId.toUuid(fromUuidId)))).toBe(
+    expect(String(Effect.runSync(userIds.toUuid(fromUuidId)))).toBe(
       "01890a5d-ac96-774b-bcce-b302099a8057",
     )
-    expect(UserId.is("user_01h455vb4pex5vsknk084sn02q")).toBe(true)
-    expect(UserId.is("account_01h455vb4pex5vsknk084sn02q")).toBe(false)
+    expect(userIds.is("user_01h455vb4pex5vsknk084sn02q")).toBe(true)
+    expect(userIds.is("account_01h455vb4pex5vsknk084sn02q")).toBe(false)
   })
 
   test("defaults factory brand names from prefixes", () => {
@@ -186,11 +200,20 @@ describe("TypeID spec", () => {
     const TeamMemberId = makeTypeId("team_member")
     type TeamMemberId = TypeIdFrom<typeof TeamMemberId>
 
+    const userIds = Effect.runSync(
+      UserId.pipe(Effect.provide(UserId.layer.pipe(Layer.provide(TestUuidV7)))),
+    )
+    const teamMemberIds = Effect.runSync(
+      TeamMemberId.pipe(
+        Effect.provide(TeamMemberId.layer.pipe(Layer.provide(TestUuidV7))),
+      ),
+    )
+
     const userId: UserId = Effect.runSync(
-      UserId.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
+      userIds.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
     )
     const teamMemberId: TeamMemberId = Effect.runSync(
-      TeamMemberId.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
+      teamMemberIds.fromUuid("01890a5d-ac96-774b-bcce-b302099a8057"),
     )
 
     expect(UserId.brand).toBe("UserId")
@@ -199,5 +222,29 @@ describe("TypeID spec", () => {
     expect(String(teamMemberId)).toBe(
       "team_member_01h455vb4pex5vsknk084sn02q",
     )
+  })
+
+  test("generates UUIDv4 TypeIDs with the UUIDv4 generator", () => {
+    const UserId = makeTypeId("user")
+
+    const program = Effect.gen(function* () {
+      const userIds = yield* UserId
+      const id = yield* userIds.generate
+      return yield* userIds.parse(id)
+    })
+
+    const parts = Effect.runSync(
+      program.pipe(
+        Effect.provide(
+          UserId.layer.pipe(Layer.provide(TestUuidV4)),
+        ),
+      ),
+    )
+
+    expect(String(parts.prefix)).toBe("user")
+    const uuid = String(parts.uuid)
+    expect(uuid).toBe("01010101-0101-4101-8101-010101010101")
+    expect(uuid[14]).toBe("4")
+    expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
   })
 })

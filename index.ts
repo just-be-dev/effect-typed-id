@@ -1,4 +1,4 @@
-import { Brand, Crypto, Effect, Layer, Option, PlatformError, Schema } from "effect"
+import { Brand, Context, Crypto, Effect, Layer, PlatformError, Schema } from "effect"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -87,6 +87,16 @@ export interface TypeIdPartsOf<Name extends string> extends Omit<TypeIdParts, "t
   readonly typeid: TypeIdOf<Name>
 }
 
+export interface TypeIdGenerator {
+  readonly generateUuid: Effect.Effect<
+    Uuid,
+    TypeIdError | PlatformError.PlatformError
+  >
+}
+
+export const TypeIdGenerator: Context.Service<TypeIdGenerator, TypeIdGenerator> =
+  Context.Service("@just-be/effect-typed-id/TypeIdGenerator")
+
 export interface TypeIdFactory<Name extends string> {
   readonly brand: Name
   readonly prefix: Prefix
@@ -102,7 +112,22 @@ export interface TypeIdFactory<Name extends string> {
   readonly unsafeFromUuid: (uuid: string) => TypeIdOf<Name>
 }
 
-export type TypeIdFrom<Factory> = Factory extends TypeIdFactory<infer Name>
+export interface TypeIdService<Name extends string>
+  extends Context.Service<TypeIdService<Name>, TypeIdFactory<Name>>,
+    Omit<TypeIdFactory<Name>, "generate"> {
+  readonly generate: Effect.Effect<
+    TypeIdOf<Name>,
+    TypeIdError | PlatformError.PlatformError,
+    TypeIdService<Name>
+  >
+  readonly layer: Layer.Layer<
+    TypeIdService<Name>,
+    TypeIdError | PlatformError.PlatformError,
+    TypeIdGenerator
+  >
+}
+
+export type TypeIdFrom<Factory> = Factory extends TypeIdService<infer Name>
   ? TypeIdOf<Name>
   : never
 
@@ -254,19 +279,43 @@ export const parse = Effect.fn("TypeId.parse")(function* (input: string) {
 
 export const make = (prefix: string, uuid: string) => fromUuid(prefix, uuid)
 
-export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) {
+const generateWith = Effect.fn("TypeId.generateWith")(function* (
+  prefix: string,
+  generator: TypeIdGenerator,
+) {
   const validPrefix = yield* validatePrefix(prefix)
-  const crypto = yield* Effect.serviceOption(Crypto.Crypto).pipe(
-    Effect.flatMap(
-      Option.match({
-        onNone: () => getWebCrypto("generate"),
-        onSome: Effect.succeed,
+  const uuid = yield* generator.generateUuid
+  const suffix = encodeBytes(uuidToBytes(uuid))
+  return format(validPrefix, suffix)
+})
+
+const cryptoGenerator = (
+  randomUuid: (crypto: Crypto.Crypto) => Effect.Effect<string, PlatformError.PlatformError>,
+  span: string,
+): Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError, Crypto.Crypto> =>
+  Layer.effect(
+    TypeIdGenerator,
+    Effect.map(Crypto.Crypto, (crypto) =>
+      TypeIdGenerator.of({
+        generateUuid: randomUuid(crypto).pipe(
+          Effect.flatMap(validateUuid),
+          Effect.withSpan(span),
+        ),
       }),
     ),
   )
-  const uuid = yield* crypto.randomUUIDv7.pipe(Effect.flatMap(validateUuid))
-  const suffix = encodeBytes(uuidToBytes(uuid))
-  return format(validPrefix, suffix)
+
+export const IdGenerators = {
+  uuidV7: cryptoGenerator((crypto) => crypto.randomUUIDv7, "TypeId.IdGenerators.uuidV7"),
+  uuidV4: cryptoGenerator((crypto) => crypto.randomUUIDv4, "TypeId.IdGenerators.uuidV4"),
+} satisfies Record<
+  string,
+  Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError, Crypto.Crypto>
+>
+
+export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) {
+  const generator = yield* TypeIdGenerator
+  return yield* generateWith(prefix, generator)
 })
 
 export const makeTypeId = <
@@ -275,11 +324,15 @@ export const makeTypeId = <
 >(
   prefix: PrefixName,
   options?: { readonly brand?: BrandName },
-): TypeIdFactory<BrandName> => {
+): TypeIdService<BrandName> => {
   const validPrefix = Effect.runSync(validatePrefix(prefix))
   const brand = (options?.brand ?? defaultBrandName(prefix)) as BrandName
   const brandTypeId = (typeid: TypeId): TypeIdOf<BrandName> =>
     typeid as TypeIdOf<BrandName>
+  const Service = Context.Service<
+    TypeIdService<BrandName>,
+    TypeIdFactory<BrandName>
+  >(`@just-be/effect-typed-id/${brand}/${validPrefix}`)
 
   const parseForPrefix = Effect.fn(`TypeId.${brand}.parse`)(function* (
     input: string,
@@ -299,11 +352,6 @@ export const makeTypeId = <
     } satisfies TypeIdPartsOf<BrandName>
   })
 
-  const generated = Effect.fn(`TypeId.${brand}.generate`)(function* () {
-    const id = yield* generate(validPrefix)
-    return brandTypeId(id)
-  })
-
   const fromUuidForPrefix = Effect.fn(`TypeId.${brand}.fromUuid`)(function* (
     uuid: string,
   ) {
@@ -311,14 +359,16 @@ export const makeTypeId = <
     return brandTypeId(id)
   })
 
-  return {
+  // Members that don't depend on the generator service; shared between the
+  // layer-provided factory and the static facade attached to the tag.
+  const staticMembers = {
     brand,
     prefix: validPrefix,
-    generate: generated(),
     fromUuid: fromUuidForPrefix,
     parse: parseForPrefix,
-    toUuid: (id) => parseForPrefix(id).pipe(Effect.map((parts) => parts.uuid)),
-    is: (input): input is TypeIdOf<BrandName> => {
+    toUuid: (id: TypeIdOf<BrandName>) =>
+      parseForPrefix(id).pipe(Effect.map((parts) => parts.uuid)),
+    is: (input: string): input is TypeIdOf<BrandName> => {
       try {
         Effect.runSync(parseForPrefix(input))
         return true
@@ -326,9 +376,31 @@ export const makeTypeId = <
         return false
       }
     },
-    unsafeParse: (input) => Effect.runSync(parseForPrefix(input)),
-    unsafeFromUuid: (uuid) => Effect.runSync(fromUuidForPrefix(uuid)),
+    unsafeParse: (input: string) => Effect.runSync(parseForPrefix(input)),
+    unsafeFromUuid: (uuid: string) => Effect.runSync(fromUuidForPrefix(uuid)),
   }
+
+  const makeService = (generator: TypeIdGenerator): TypeIdFactory<BrandName> => {
+    const generated = Effect.fn(`TypeId.${brand}.generate`)(function* () {
+      return brandTypeId(yield* generateWith(validPrefix, generator))
+    })
+
+    return { ...staticMembers, generate: generated() }
+  }
+
+  const layer = Layer.effect(
+    Service,
+    Effect.gen(function* () {
+      const generator = yield* TypeIdGenerator
+      return makeService(generator)
+    }),
+  )
+
+  return Object.assign(Service, {
+    ...staticMembers,
+    generate: Service.use((service) => service.generate),
+    layer,
+  })
 }
 
 export const unsafeParse = (input: string): TypeIdParts => Effect.runSync(parse(input))
