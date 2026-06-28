@@ -1,0 +1,54 @@
+index.test.ts
+  s_bc1978cbecc3ba::t_d13d779f7cc824 146-148
+  s_bc1978cbecc3ba::t_52467a82aca5a0 8,149-151,162,165-169,176,178-179,181,185-186,189,192-193,203,205-207,209-211,213,216,226-238,240-249
+  s_bc1978cbecc3ba::t_abf035c7db5fce 22-24,135,145,163,177,204,208,239
+CHANGELOG.md
+  s_bc1978cbecc3ba::t_f006296543df7f 3-7,10,12-14,17
+  s_bc1978cbecc3ba::t_30ee2102fd39ff 8-9,11,15-16
+index.ts
+  s_10269bfb2d7378::t_cc4ad1cd99d6ad 116-117
+  s_bc1978cbecc3ba::t_623f1034d072a5 1,90,95,99,115,124-125,127-130,282-285,288-291,327,332-334,402
+  s_bc1978cbecc3ba::t_b87e2ef5ca187a 118-122,369-371,379-380
+  s_10269bfb2d7378::t_401c5b63601e47 292-296,298-300,302,308-310
+  s_bc1978cbecc3ba::t_83c772d28f42c2 91-94,96-98,123,126,287,297,307,311-317
+  s_bc1978cbecc3ba::t_ef1d91d47e15e9 335
+  s_10269bfb2d7378::t_0df30eae611af4 362-364,381-382,385,390-401
+  s_bc1978cbecc3ba::t_10eada9b3fa78e 301,303
+  s_10269bfb2d7378::t_815a381e786c79 318
+  s_10269bfb2d7378::t_4882b3ee9cbff2 383-384,386-388
+  s_bc1978cbecc3ba::t_2726204cc11b5a 403
+README.md
+  s_bc1978cbecc3ba::t_6a45cfd566ce4f 11-15,40-42,105-109
+  s_bc1978cbecc3ba::t_b189dc399aedf4 10,143
+  s_bc1978cbecc3ba::t_33e3269a450c1a 5
+  s_bc1978cbecc3ba::t_c44891c20de0f2 60,85,115
+  s_bc1978cbecc3ba::t_e41c24bccb9274 16,28-29,36-37,50-59,61-62,67-70,79,88,95,100-104,110-114,124-125,134,141
+  s_bc1978cbecc3ba::t_ee08280b52299b 30-35,49,63-66,80,89-94,116-123,129,135-137
+  s_bc1978cbecc3ba::t_41025936eb7e12 126
+package.json
+  s_bc1978cbecc3ba::t_81b6feef3491eb 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "08bdef60611a764dc545178f80468b0ec8485498",
+  "prompts": {},
+  "sessions": {
+    "s_10269bfb2d7378": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4f637d7-c08f-4191-abec-880f29635aa6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    },
+    "s_bc1978cbecc3ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0944-c30a-71e3-8e92-9c399cdf33f0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Justin Bennett <git@just-be.dev>"
+    }
+  }
+}
