@@ -7,13 +7,8 @@ TypeIDs are type-safe UUID identifiers encoded as strict lowercase base32 with a
 ## Usage
 
 ```ts
-import { Effect, Layer } from "effect"
-import {
-  IdGenerators,
-  makeTypeId,
-  type TypeIdFrom,
-} from "@just-be/effect-typed-id"
-import { NodeCrypto } from "@effect/platform-node-shared"
+import { Effect } from "effect"
+import { makeTypeId, type TypeIdFrom } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user")
 type UserId = TypeIdFrom<typeof UserId>
@@ -25,16 +20,8 @@ const program = Effect.gen(function* () {
   return { id, uuid }
 })
 
-const result = await Effect.runPromise(
-  program.pipe(
-    Effect.provide(
-      UserId.layer.pipe(
-        Layer.provide(IdGenerators.uuidV7),
-        Layer.provide(NodeCrypto.layer),
-      ),
-    ),
-  ),
-)
+// Generation defaults to UUIDv7 over globalThis.crypto — no layers required.
+const result = await Effect.runPromise(program)
 ```
 
 Generation is fully Effect-native and pluggable. By default it produces UUIDv7
