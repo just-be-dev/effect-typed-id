@@ -1,4 +1,4 @@
-import { Brand, Context, Crypto, Effect, Layer, PlatformError, Schema } from "effect"
+import { Brand, Context, Crypto, Effect, Layer, Option, PlatformError, Schema } from "effect"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -117,8 +117,7 @@ export interface TypeIdService<Name extends string>
     Omit<TypeIdFactory<Name>, "generate"> {
   readonly generate: Effect.Effect<
     TypeIdOf<Name>,
-    TypeIdError | PlatformError.PlatformError,
-    TypeIdService<Name>
+    TypeIdError | PlatformError.PlatformError
   >
   readonly layer: Layer.Layer<
     TypeIdService<Name>,
@@ -313,8 +312,23 @@ export const IdGenerators = {
   Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError, Crypto.Crypto>
 >
 
+// Default generator: UUIDv7 backed by the built-in web-crypto singleton, so
+// generation works out of the box without wiring a TypeIdGenerator layer.
+// Provide a TypeIdGenerator (e.g. one of IdGenerators) to override it.
+const defaultGenerator: TypeIdGenerator = {
+  generateUuid: getWebCrypto("generate").pipe(
+    Effect.flatMap((crypto) => crypto.randomUUIDv7),
+    Effect.flatMap(validateUuid),
+    Effect.withSpan("TypeId.IdGenerators.default"),
+  ),
+}
+
+const resolveGenerator: Effect.Effect<TypeIdGenerator> = Effect.serviceOption(
+  TypeIdGenerator,
+).pipe(Effect.map(Option.getOrElse(() => defaultGenerator)))
+
 export const generate = Effect.fn("TypeId.generate")(function* (prefix: string) {
-  const generator = yield* TypeIdGenerator
+  const generator = yield* resolveGenerator
   return yield* generateWith(prefix, generator)
 })
 
@@ -398,7 +412,17 @@ export const makeTypeId = <
 
   return Object.assign(Service, {
     ...staticMembers,
-    generate: Service.use((service) => service.generate),
+    // Use the provided factory when this service is in context, otherwise fall
+    // back to the default (or a bare TypeIdGenerator) so generation works
+    // without wiring a layer.
+    generate: Effect.serviceOption(Service).pipe(
+      Effect.flatMap(
+        Option.match({
+          onNone: () => generate(validPrefix).pipe(Effect.map(brandTypeId)),
+          onSome: (service) => service.generate,
+        }),
+      ),
+    ),
     layer,
   })
 }

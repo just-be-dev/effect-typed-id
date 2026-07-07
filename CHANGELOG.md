@@ -4,16 +4,17 @@
 
 ### Breaking Changes
 
-- `makeTypeId(prefix)` now returns an Effect service tag. Use `yield* UserId`
-  inside Effect programs and provide `UserId.layer` plus a `TypeIdGenerator`
-  layer at the boundary.
-- `generate(prefix)` and factory generation no longer fall back to
-  `globalThis.crypto`; provide explicit generator and `Crypto` layers.
+- `makeTypeId(prefix)` now returns an Effect service tag with a `.layer` in
+  addition to the eager factory methods. `yield* UserId` provides a factory
+  bound to a specific `TypeIdGenerator`.
 
 ### Added
 
 - Added the `TypeIdGenerator` service and `IdGenerators.uuidV7` /
-  `IdGenerators.uuidV4` layers for pluggable generation strategies.
+  `IdGenerators.uuidV4` layers for pluggable generation strategies. Generation
+  still defaults to UUIDv7 over `globalThis.crypto`, so `generate` and
+  `UserId.generate` work with no wiring; provide a `TypeIdGenerator` layer to
+  override the strategy or randomness source.
 
 ## 0.4.0
 

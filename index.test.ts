@@ -142,10 +142,24 @@ describe("TypeID spec", () => {
     expect(uuid.slice(14)).toBe("7101-8101-010101010101")
   })
 
-  test("requires an explicit generator service for generation", () => {
-    expect(() =>
-      Effect.runSync(generate("user") as Effect.Effect<unknown, unknown>),
-    ).toThrow()
+  test("generates with the default generator when none is provided", () => {
+    const typeid = Effect.runSync(generate("user"))
+    const parts = Effect.runSync(parse(typeid))
+
+    expect(String(parts.prefix)).toBe("user")
+    // Default generator produces real UUIDv7s.
+    expect(String(parts.uuid)[14]).toBe("7")
+    expect(["8", "9", "a", "b"]).toContain(String(parts.uuid)[19]!)
+  })
+
+  test("factory generate works without providing a layer", () => {
+    const UserId = makeTypeId("user", { brand: "UserId" })
+
+    const id = Effect.runSync(UserId.generate)
+    const parts = Effect.runSync(UserId.parse(id))
+
+    expect(String(parts.prefix)).toBe("user")
+    expect(String(parts.uuid)[14]).toBe("7")
   })
 
   test("generates TypeIDs with an Effect-native service", () => {

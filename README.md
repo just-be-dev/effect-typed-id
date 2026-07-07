@@ -37,9 +37,10 @@ const result = await Effect.runPromise(
 )
 ```
 
-Generation is fully Effect-native. Provide a `TypeIdGenerator` layer and that
-generator's dependencies at the boundary of your program; the library does not
-fall back to `globalThis.crypto` implicitly.
+Generation is fully Effect-native and pluggable. By default it produces UUIDv7
+TypeIDs using `globalThis.crypto`, so `generate` and `UserId.generate` work with
+no wiring. Provide a `TypeIdGenerator` layer (e.g. one of `IdGenerators`) at the
+boundary of your program to override the strategy or randomness source.
 
 `makeTypeId(prefix)` defaults the TypeScript brand to the PascalCase prefix plus
 `Id`, so `makeTypeId("user")` creates a `UserId` brand and
@@ -126,7 +127,7 @@ const id = await Effect.runPromise(
 
 ## API
 
-- `generate(prefix)`: create a TypeID using a provided `TypeIdGenerator` service.
+- `generate(prefix)`: create a TypeID, using a provided `TypeIdGenerator` service or the default UUIDv7 generator.
 - `parse(typeid)`: validate and decode a TypeID into `{ prefix, suffix, uuid, typeid }`.
 - `fromUuid(prefix, uuid)`: encode a canonical UUID string as a TypeID.
 - `encodeUuid(uuid)`: encode a UUID as a 26-character TypeID suffix.
@@ -140,7 +141,7 @@ const id = await Effect.runPromise(
 
 Service methods:
 
-- `generate`: create a new branded TypeID for the service prefix using the configured generator.
+- `generate`: create a new branded TypeID for the service prefix using the configured generator, or the default UUIDv7 generator when none is provided.
 - `fromUuid(uuid)`: encode a UUID as the branded TypeID.
 - `parse(input)`: validate a string and return branded TypeID parts.
 - `toUuid(id)`: decode a branded TypeID to its UUID.
