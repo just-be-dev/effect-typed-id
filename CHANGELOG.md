@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.5.0
+
+### Breaking Changes
+
+- Generation is now customized through the `TypeIdGenerator` service instead of
+  a bare `Crypto` service. Providing only `Crypto` (e.g. `NodeCrypto.layer`) no
+  longer changes `generate` / `UserId.generate`; provide a `TypeIdGenerator`
+  layer such as `IdGenerators.uuidV7` or `UserId.layer`. The default (UUIDv7 over
+  `globalThis.crypto`) is unchanged, so no-wiring generation keeps working.
+- Removed the `WebCryptoLive` export. `globalThis.crypto` is now the default
+  randomness source, so providing it was a no-op; drop it or, to select the
+  randomness source explicitly, provide a platform `Crypto` layer (e.g.
+  `NodeCrypto.layer`).
+
+### Added
+
+- `makeTypeId(prefix)` now also returns an Effect service tag with a `.layer`;
+  `yield* UserId` provides a factory bound to a specific `TypeIdGenerator`. The
+  eager methods (`generate`, `fromUuid`, `parse`, …) are unchanged.
+- Added the `TypeIdGenerator` service and `IdGenerators.uuidV7` /
+  `IdGenerators.uuidV4` layers for pluggable generation strategies. Like the
+  default generator, they fall back to `globalThis.crypto`, so a platform
+  `Crypto` layer is optional.
+
 ## 0.4.0
 
 ### Added
