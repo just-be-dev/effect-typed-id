@@ -47,8 +47,6 @@ const getWebCrypto = (
       )
     : Effect.succeed(webCrypto)
 
-export const WebCryptoLive = Layer.effect(Crypto.Crypto, getWebCrypto("WebCryptoLive"))
-
 export const Prefix = Schema.String.pipe(Schema.brand("TypeIdPrefix"))
 export type Prefix = typeof Prefix.Type
 

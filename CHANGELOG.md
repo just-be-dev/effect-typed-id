@@ -9,6 +9,10 @@
   longer changes `generate` / `UserId.generate`; provide a `TypeIdGenerator`
   layer such as `IdGenerators.uuidV7` or `UserId.layer`. The default (UUIDv7 over
   `globalThis.crypto`) is unchanged, so no-wiring generation keeps working.
+- Removed the `WebCryptoLive` export. `globalThis.crypto` is now the default
+  randomness source, so providing it was a no-op; drop it or, to select the
+  randomness source explicitly, provide a platform `Crypto` layer (e.g.
+  `NodeCrypto.layer`).
 
 ### Added
 

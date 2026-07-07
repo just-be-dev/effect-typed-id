@@ -79,8 +79,7 @@ const id = await Effect.runPromise(main)
 ```
 
 In environments with `globalThis.crypto` (browsers, modern runtimes) you don't
-need a `Crypto` layer at all — that's the default. `WebCryptoLive` is available
-if you want to provide it explicitly.
+need a `Crypto` layer at all — that's the default.
 
 ## API
 
@@ -93,7 +92,6 @@ if you want to provide it explicitly.
 - `TypeIdGenerator`: Effect service for pluggable UUID generation.
 - `IdGenerators.uuidV7`: UUIDv7 generator layer.
 - `IdGenerators.uuidV4`: UUIDv4 generator layer.
-- `WebCryptoLive`: optionally provide Effect's `Crypto` service from `globalThis.crypto` explicitly (already the default fallback).
 - `TypeIdError`: typed Effect error for validation failures.
 
 Service methods:
