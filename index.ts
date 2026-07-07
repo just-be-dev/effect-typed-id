@@ -288,13 +288,25 @@ const generateWith = Effect.fn("TypeId.generateWith")(function* (
   return format(validPrefix, suffix)
 })
 
+// Use a provided Crypto service when present, otherwise fall back to the
+// built-in web-crypto singleton so generators work without a platform layer.
+const resolveCrypto: Effect.Effect<Crypto.Crypto, PlatformError.PlatformError> =
+  Effect.serviceOption(Crypto.Crypto).pipe(
+    Effect.flatMap(
+      Option.match({
+        onNone: () => getWebCrypto("generate"),
+        onSome: Effect.succeed,
+      }),
+    ),
+  )
+
 const cryptoGenerator = (
   randomUuid: (crypto: Crypto.Crypto) => Effect.Effect<string, PlatformError.PlatformError>,
   span: string,
-): Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError, Crypto.Crypto> =>
+): Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError> =>
   Layer.effect(
     TypeIdGenerator,
-    Effect.map(Crypto.Crypto, (crypto) =>
+    Effect.map(resolveCrypto, (crypto) =>
       TypeIdGenerator.of({
         generateUuid: randomUuid(crypto).pipe(
           Effect.flatMap(validateUuid),
@@ -309,14 +321,14 @@ export const IdGenerators = {
   uuidV4: cryptoGenerator((crypto) => crypto.randomUUIDv4, "TypeId.IdGenerators.uuidV4"),
 } satisfies Record<
   string,
-  Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError, Crypto.Crypto>
+  Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError>
 >
 
-// Default generator: UUIDv7 backed by the built-in web-crypto singleton, so
-// generation works out of the box without wiring a TypeIdGenerator layer.
-// Provide a TypeIdGenerator (e.g. one of IdGenerators) to override it.
+// Default generator (used when no TypeIdGenerator is provided): UUIDv7 over the
+// resolved Crypto service, so generation works out of the box. Provide a
+// TypeIdGenerator (e.g. one of IdGenerators) to override the strategy.
 const defaultGenerator: TypeIdGenerator = {
-  generateUuid: getWebCrypto("generate").pipe(
+  generateUuid: resolveCrypto.pipe(
     Effect.flatMap((crypto) => crypto.randomUUIDv7),
     Effect.flatMap(validateUuid),
     Effect.withSpan("TypeId.IdGenerators.default"),

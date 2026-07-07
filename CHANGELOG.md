@@ -7,9 +7,8 @@
 - Generation is now customized through the `TypeIdGenerator` service instead of
   a bare `Crypto` service. Providing only `Crypto` (e.g. `NodeCrypto.layer`) no
   longer changes `generate` / `UserId.generate`; provide a `TypeIdGenerator`
-  layer such as `IdGenerators.uuidV7` (layered over your `Crypto`) or
-  `UserId.layer`. The default (UUIDv7 over `globalThis.crypto`) is unchanged, so
-  no-wiring generation keeps working.
+  layer such as `IdGenerators.uuidV7` or `UserId.layer`. The default (UUIDv7 over
+  `globalThis.crypto`) is unchanged, so no-wiring generation keeps working.
 
 ### Added
 
@@ -17,7 +16,9 @@
   `yield* UserId` provides a factory bound to a specific `TypeIdGenerator`. The
   eager methods (`generate`, `fromUuid`, `parse`, …) are unchanged.
 - Added the `TypeIdGenerator` service and `IdGenerators.uuidV7` /
-  `IdGenerators.uuidV4` layers for pluggable generation strategies.
+  `IdGenerators.uuidV4` layers for pluggable generation strategies. Like the
+  default generator, they fall back to `globalThis.crypto`, so a platform
+  `Crypto` layer is optional.
 
 ## 0.4.0
 

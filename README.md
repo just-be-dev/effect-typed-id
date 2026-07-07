@@ -35,25 +35,18 @@ boundary of your program to override the strategy or randomness source.
 `{ brand: "CustomName" }` to override it.
 
 Provide `IdGenerators.uuidV7` for UUIDv7 TypeIDs or `IdGenerators.uuidV4` for
-UUIDv4-backed TypeIDs:
+UUIDv4-backed TypeIDs. Like the default, these fall back to `globalThis.crypto`,
+so a platform `Crypto` layer is optional (see [Platform Crypto](#platform-crypto)):
 
 ```ts
 import { Effect, Layer } from "effect"
-import { NodeCrypto } from "@effect/platform-node-shared"
 import { IdGenerators, makeTypeId } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user")
 
 const main = Effect.gen(function* () {
   return yield* UserId.generate
-}).pipe(
-  Effect.provide(
-    UserId.layer.pipe(
-      Layer.provide(IdGenerators.uuidV4),
-      Layer.provide(NodeCrypto.layer),
-    ),
-  ),
-)
+}).pipe(Effect.provide(UserId.layer.pipe(Layer.provide(IdGenerators.uuidV4))))
 ```
 
 ## Platform Crypto

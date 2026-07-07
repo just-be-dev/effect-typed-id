@@ -261,4 +261,20 @@ describe("TypeID spec", () => {
     expect(uuid[14]).toBe("4")
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
   })
+
+  test("IdGenerators fall back to web crypto without a Crypto layer", () => {
+    const UserId = makeTypeId("user")
+
+    const parts = Effect.runSync(
+      UserId.generate.pipe(
+        Effect.flatMap((id) => UserId.parse(id)),
+        Effect.provide(UserId.layer.pipe(Layer.provide(IdGenerators.uuidV4))),
+      ),
+    )
+
+    expect(String(parts.prefix)).toBe("user")
+    // Real UUIDv4 from the built-in web crypto, not the deterministic test fake.
+    expect(String(parts.uuid)[14]).toBe("4")
+    expect(["8", "9", "a", "b"]).toContain(String(parts.uuid)[19]!)
+  })
 })
