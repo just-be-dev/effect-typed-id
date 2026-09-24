@@ -66,7 +66,7 @@ type DefaultBrandName<PrefixName extends string> =
     ? `${Capitalize<Head>}${DefaultBrandName<Tail>}`
     : `${Capitalize<PrefixName>}Id`
 
-export class TypeIdError extends Schema.TaggedErrorClass<TypeIdError>()(
+export class TypeIdError extends Schema.TaggedError<TypeIdError>()(
   "TypeIdError",
   {
     input: Schema.String,
