@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { Crypto, Effect, Layer } from "effect"
+import * as Crypto from "effect/Crypto"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import {
   decodeUuid,
   encodeUuid,

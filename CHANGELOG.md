@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+### Breaking Changes
+
+- Require stable Effect 4 (`^4.0.0`) instead of the Effect 4 beta. Consumers
+  must upgrade Effect to the stable release alongside this package.
+
+### Changed
+
+- Migrate the error schema to `Schema.TaggedError` and update the TypeScript
+  and Effect development tooling for stable Effect 4. TypeID behavior and
+  public exports remain unchanged.
+
 ## 0.5.0
 
 ### Breaking Changes

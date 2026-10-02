@@ -1,6 +1,6 @@
 {
   "name": "@just-be/effect-typed-id",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Effect TypeScript implementation of the TypeID spec",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,7 +29,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "effect": "^4.0.0-beta.90"
+    "effect": "^4.0.0"
   },
   "scripts": {
     "build": "rm -rf dist && tsgo && rm -f dist/*.test.*",
@@ -37,17 +37,14 @@
     "prepack": "bun run build",
     "test": "bun test",
     "typecheck": "tsgo --noEmit",
-    "prepare": "bun run effect-tsgo patch"
+    "prepare": "effect-tsgo patch"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.86.2",
-    "@effect/tsgo": "^0.14.6",
+    "@effect/language-service": "^0.87.3",
+    "@effect/tsgo": "^0.47.2",
     "@types/bun": "latest",
-    "@typescript/native-preview": "7.0.0-dev.20260624.1",
+    "effect": "^4.0.0",
     "effect-solutions": "^0.5.3",
-    "typescript": "7.0.1-rc"
-  },
-  "trustedDependencies": [
-    "@typescript/native-preview"
-  ]
+    "typescript": "7.0.2"
+  }
 }
