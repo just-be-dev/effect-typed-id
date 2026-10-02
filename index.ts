@@ -1,4 +1,11 @@
-import { Brand, Context, Crypto, Effect, Layer, Option, PlatformError, Schema } from "effect"
+import type * as Brand from "effect/Brand"
+import * as Context from "effect/Context"
+import * as Crypto from "effect/Crypto"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as PlatformError from "effect/PlatformError"
+import * as Schema from "effect/Schema"
 
 const alphabet = "0123456789abcdefghjkmnpqrstvwxyz" as const
 const suffixLength = 26
@@ -66,7 +73,7 @@ type DefaultBrandName<PrefixName extends string> =
     ? `${Capitalize<Head>}${DefaultBrandName<Tail>}`
     : `${Capitalize<PrefixName>}Id`
 
-export class TypeIdError extends Schema.TaggedErrorClass<TypeIdError>()(
+export class TypeIdError extends Schema.TaggedError<TypeIdError>()(
   "TypeIdError",
   {
     input: Schema.String,

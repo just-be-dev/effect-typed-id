@@ -7,7 +7,7 @@ TypeIDs are type-safe UUID identifiers encoded as strict lowercase base32 with a
 ## Usage
 
 ```ts
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import { makeTypeId, type TypeIdFrom } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user")
@@ -39,7 +39,8 @@ UUIDv4-backed TypeIDs. Like the default, these fall back to `globalThis.crypto`,
 so a platform `Crypto` layer is optional (see [Platform Crypto](#platform-crypto)):
 
 ```ts
-import { Effect, Layer } from "effect"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { IdGenerators, makeTypeId } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user")
@@ -57,7 +58,8 @@ Node:
 
 ```ts
 import { NodeCrypto } from "@effect/platform-node-shared"
-import { Effect, Layer } from "effect"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { IdGenerators, makeTypeId } from "@just-be/effect-typed-id"
 
 const UserId = makeTypeId("user")
