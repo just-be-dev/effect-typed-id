@@ -32,11 +32,11 @@
     "effect": "^4.0.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsgo && rm -f dist/*.test.*",
+    "build": "rm -rf dist && tsc && rm -f dist/*.test.*",
     "check": "bun run typecheck && bun run test",
     "prepack": "bun run build",
     "test": "bun test",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "prepare": "effect-tsgo patch"
   },
   "devDependencies": {
