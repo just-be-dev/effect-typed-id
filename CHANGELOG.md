@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+
+### Breaking Changes
+
+- Require Effect `^4.1.0`. Effect 4.1 replaced the `effect/Crypto` module with
+  `effect/crypto`, so this release no longer works with Effect 4.0.x.
+- Generation now reads randomness from the `SecureRandom` service
+  (`effect/crypto/SecureRandom`) instead of the removed `Crypto` service. To
+  pick the randomness source explicitly, provide a `SecureRandom` layer (e.g.
+  `NodeCrypto.layerSecureRandom` or `SecureRandom.layerWebCrypto`) instead of
+  `NodeCrypto.layer`. The default (UUIDv7 over `globalThis.crypto`) is
+  unchanged.
+
+### Changed
+
+- UUIDv7 generation now uses Effect's `SecureRandom.uuidV7`, which takes its
+  timestamp from the `Clock` service and keeps IDs monotonically ordered within
+  a generator.
+
 ## 0.6.0
 
 ### Breaking Changes

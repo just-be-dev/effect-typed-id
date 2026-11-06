@@ -1,6 +1,6 @@
 import type * as Brand from "effect/Brand"
 import * as Context from "effect/Context"
-import * as Crypto from "effect/Crypto"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -28,31 +28,25 @@ const systemError = (
     ...options,
   })
 
-const makeWebCrypto = (webCrypto: typeof globalThis.crypto): Crypto.Crypto =>
-  Crypto.make({
-    randomBytes: (size) =>
-      webCrypto.getRandomValues(new Uint8Array(size)),
-    digest: (algorithm, data) =>
-      Effect.tryPromise({
-        try: () => webCrypto.subtle.digest(algorithm, new Uint8Array(data)),
-        catch: (cause) => systemError("digest", { cause }),
-      }).pipe(Effect.map((buffer) => new Uint8Array(buffer))),
-  })
+// globalThis.crypto is a stable singleton, so build the SecureRandom instance
+// once. Sharing one instance also keeps its UUIDv7s monotonically ordered.
+const webSecureRandom: SecureRandom.SecureRandom["Service"] | undefined =
+  globalThis.crypto === undefined
+    ? undefined
+    : SecureRandom.make((size) =>
+        globalThis.crypto.getRandomValues(new Uint8Array(size)),
+      )
 
-// globalThis.crypto is a stable singleton, so build the Crypto instance once.
-const webCrypto: Crypto.Crypto | undefined =
-  globalThis.crypto === undefined ? undefined : makeWebCrypto(globalThis.crypto)
-
-const getWebCrypto = (
+const getWebSecureRandom = (
   method: string,
-): Effect.Effect<Crypto.Crypto, PlatformError.PlatformError> =>
-  webCrypto === undefined
+): Effect.Effect<SecureRandom.SecureRandom["Service"], PlatformError.PlatformError> =>
+  webSecureRandom === undefined
     ? Effect.fail(
         systemError(method, {
           description: "globalThis.crypto is not available",
         }),
       )
-    : Effect.succeed(webCrypto)
+    : Effect.succeed(webSecureRandom)
 
 export const Prefix = Schema.String.pipe(Schema.brand("TypeIdPrefix"))
 export type Prefix = typeof Prefix.Type
@@ -293,27 +287,29 @@ const generateWith = Effect.fn("TypeId.generateWith")(function* (
   return format(validPrefix, suffix)
 })
 
-// Use a provided Crypto service when present, otherwise fall back to the
+// Use a provided SecureRandom service when present, otherwise fall back to the
 // built-in web-crypto singleton so generators work without a platform layer.
-const resolveCrypto: Effect.Effect<Crypto.Crypto, PlatformError.PlatformError> =
-  Effect.serviceOption(Crypto.Crypto).pipe(
-    Effect.flatMap(
-      Option.match({
-        onNone: () => getWebCrypto("generate"),
-        onSome: Effect.succeed,
-      }),
-    ),
-  )
+const resolveSecureRandom: Effect.Effect<
+  SecureRandom.SecureRandom["Service"],
+  PlatformError.PlatformError
+> = Effect.serviceOption(SecureRandom.SecureRandom).pipe(
+  Effect.flatMap(
+    Option.match({
+      onNone: () => getWebSecureRandom("generate"),
+      onSome: Effect.succeed,
+    }),
+  ),
+)
 
-const cryptoGenerator = (
-  randomUuid: (crypto: Crypto.Crypto) => Effect.Effect<string, PlatformError.PlatformError>,
+const secureRandomGenerator = (
+  randomUuid: (random: SecureRandom.SecureRandom["Service"]) => Effect.Effect<string>,
   span: string,
 ): Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError> =>
   Layer.effect(
     TypeIdGenerator,
-    Effect.map(resolveCrypto, (crypto) =>
+    Effect.map(resolveSecureRandom, (random) =>
       TypeIdGenerator.of({
-        generateUuid: randomUuid(crypto).pipe(
+        generateUuid: randomUuid(random).pipe(
           Effect.flatMap(validateUuid),
           Effect.withSpan(span),
         ),
@@ -322,19 +318,19 @@ const cryptoGenerator = (
   )
 
 export const IdGenerators = {
-  uuidV7: cryptoGenerator((crypto) => crypto.randomUUIDv7, "TypeId.IdGenerators.uuidV7"),
-  uuidV4: cryptoGenerator((crypto) => crypto.randomUUIDv4, "TypeId.IdGenerators.uuidV4"),
+  uuidV7: secureRandomGenerator((random) => random.uuidV7(), "TypeId.IdGenerators.uuidV7"),
+  uuidV4: secureRandomGenerator((random) => random.uuidV4(), "TypeId.IdGenerators.uuidV4"),
 } satisfies Record<
   string,
   Layer.Layer<TypeIdGenerator, TypeIdError | PlatformError.PlatformError>
 >
 
 // Default generator (used when no TypeIdGenerator is provided): UUIDv7 over the
-// resolved Crypto service, so generation works out of the box. Provide a
+// resolved SecureRandom service, so generation works out of the box. Provide a
 // TypeIdGenerator (e.g. one of IdGenerators) to override the strategy.
 const defaultGenerator: TypeIdGenerator = {
-  generateUuid: resolveCrypto.pipe(
-    Effect.flatMap((crypto) => crypto.randomUUIDv7),
+  generateUuid: resolveSecureRandom.pipe(
+    Effect.flatMap((random) => random.uuidV7()),
     Effect.flatMap(validateUuid),
     Effect.withSpan("TypeId.IdGenerators.default"),
   ),

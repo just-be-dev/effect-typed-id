@@ -36,7 +36,7 @@ boundary of your program to override the strategy or randomness source.
 
 Provide `IdGenerators.uuidV7` for UUIDv7 TypeIDs or `IdGenerators.uuidV4` for
 UUIDv4-backed TypeIDs. Like the default, these fall back to `globalThis.crypto`,
-so a platform `Crypto` layer is optional (see [Platform Crypto](#platform-crypto)):
+so a `SecureRandom` layer is optional (see [Platform Crypto](#platform-crypto)):
 
 ```ts
 import * as Effect from "effect/Effect"
@@ -52,9 +52,10 @@ const main = Effect.gen(function* () {
 
 ## Platform Crypto
 
-Install the Effect platform package for your runtime and provide its `Crypto`
-layer when you want generation to use that platform service. For example, in
-Node:
+Generation draws randomness from the `SecureRandom` service in
+`effect/crypto`. Provide a `SecureRandom` layer when you want generation to use a
+specific randomness source, such as your runtime's platform package. For example,
+in Node:
 
 ```ts
 import { NodeCrypto } from "@effect/platform-node-shared"
@@ -72,7 +73,7 @@ const main = program.pipe(
   Effect.provide(
     UserId.layer.pipe(
       Layer.provide(IdGenerators.uuidV7),
-      Layer.provide(NodeCrypto.layer),
+      Layer.provide(NodeCrypto.layerSecureRandom),
     ),
   ),
 )
@@ -81,7 +82,7 @@ const id = await Effect.runPromise(main)
 ```
 
 In environments with `globalThis.crypto` (browsers, modern runtimes) you don't
-need a `Crypto` layer at all — that's the default.
+need a `SecureRandom` layer at all — that's the default.
 
 ## API
 
