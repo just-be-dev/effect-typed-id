@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import * as Crypto from "effect/Crypto"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import {
@@ -13,16 +13,13 @@ import {
   type TypeIdFrom,
 } from "./index"
 
-const TestCrypto = Layer.succeed(
-  Crypto.Crypto,
-  Crypto.make({
-    randomBytes: (size) => new Uint8Array(size).fill(1),
-    digest: (_algorithm, data) => Effect.succeed(data),
-  }),
+const TestSecureRandom = Layer.succeed(
+  SecureRandom.SecureRandom,
+  SecureRandom.make((size) => new Uint8Array(size).fill(1)),
 )
 
-const TestUuidV7 = IdGenerators.uuidV7.pipe(Layer.provide(TestCrypto))
-const TestUuidV4 = IdGenerators.uuidV4.pipe(Layer.provide(TestCrypto))
+const TestUuidV7 = IdGenerators.uuidV7.pipe(Layer.provide(TestSecureRandom))
+const TestUuidV4 = IdGenerators.uuidV4.pipe(Layer.provide(TestSecureRandom))
 
 const validCases = [
   {
@@ -264,7 +261,7 @@ describe("TypeID spec", () => {
     expect(["8", "9", "a", "b"]).toContain(uuid[19]!)
   })
 
-  test("IdGenerators fall back to web crypto without a Crypto layer", () => {
+  test("IdGenerators fall back to web crypto without a SecureRandom layer", () => {
     const UserId = makeTypeId("user")
 
     const parts = Effect.runSync(

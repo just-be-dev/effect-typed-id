@@ -32,7 +32,14 @@
     "noPropertyAccessFromIndexSignature": false,
 
     "plugins": [
-      { "name": "@effect/language-service" }
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          // Effect 4.1 marks effect/crypto and PlatformError as unstable; there
+          // is no stable alternative for secure randomness yet.
+          "unstableApiUsage": "message"
+        }
+      }
     ]
   },
   "include": [
